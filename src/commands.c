@@ -30,8 +30,10 @@ static int is_built_in_command(const char* command_name)
  */
 int evaluate_command(int n_commands, struct single_command (*commands)[512])
 {
+ for(int i = 0; i < n_commands; i++) {
+ printf("%d%d\n", n_commands, i);
   if (n_commands > 0) {
-    struct single_command* com = (*commands);
+    struct single_command* com = (*(commands+i));
 
     assert(com->argc != 0);
 
@@ -50,14 +52,19 @@ int evaluate_command(int n_commands, struct single_command (*commands)[512])
     } else if (strcmp(com->argv[0], "exit") == 0) {
       return 1;
     } else {
+	  if(fork() == 0) {
+	    execv(com->argv[0], com->argv);
       fprintf(stderr, "%s: command not found\n", com->argv[0]);
       return -1;
     }
+	wait();
   }
 
   return 0;
+  }
+  }
+  
 }
-
 void free_commands(int n_commands, struct single_command (*commands)[512])
 {
   for (int i = 0; i < n_commands; ++i) {
