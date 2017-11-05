@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -9,16 +9,11 @@
 #include "built_in.h"
 
 int do_cd(int argc, char** argv) {
-	printf("%s %s\n",argv[0], argv[1]);
-  if (!validate_cd_argv(argc, argv)) {
-    printf("ifval\n");
+  if (!validate_cd_argv(argc, argv))
     return -1;
-	}
 	
-  if (chdir(argv[1]) == -1) {
-  printf("chdir err\n");
+  if (chdir(argv[1]) == -1)
     return -1;
-	}
 
   return 0;
 }
@@ -50,13 +45,16 @@ int do_fg(int argc, char** argv) {
 int validate_cd_argv(int argc, char** argv) {
   if (argc != 2) return 0;
   if (strcmp(argv[0], "cd") != 0) return 0;
-  if (strcmp(argv[1],"~") == 0) { 
+  if (argv[1][0] == '~') {
+    char *temp = (char*)malloc(sizeof(char)*30);
+	strcpy(temp, argv[1]);
     strncpy(argv[1],"/home/aeis",10);
+	strcpy(argv[1]+10, temp+1);
+	free(temp);
 	}
   struct stat buf;
   stat(argv[1], &buf);
   if (!S_ISDIR(buf.st_mode)) return 0;
-  printf("after isdir\n");
   return 1;
 }
 
