@@ -10,9 +10,10 @@
 
 int do_cd(int argc, char** argv) {
 	printf("%s %s\n",argv[0], argv[1]);
-  if (!validate_cd_argv(argc, argv))
+  if (!validate_cd_argv(argc, argv)) {
     printf("ifval\n");
     return -1;
+	}
 	
   if (chdir(argv[1]) == -1) {
   printf("chdir err\n");
