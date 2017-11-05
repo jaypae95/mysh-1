@@ -5,7 +5,7 @@
 
 #include "commands.h"
 #include "built_in.h"
-
+#include "signal.h"
 static struct built_in_command built_in_commands[] = {
   { "cd", do_cd, validate_cd_argv },
   { "pwd", do_pwd, validate_pwd_argv },
@@ -30,10 +30,9 @@ static int is_built_in_command(const char* command_name)
  */
 int evaluate_command(int n_commands, struct single_command (*commands)[512])
 {
- for(int i = 0; i < n_commands; i++) {
- printf("%d%d\n", n_commands, i);
+
   if (n_commands > 0) {
-    struct single_command* com = (*(commands+i));
+    struct single_command* com = *commands;
 
     assert(com->argc != 0);
 
@@ -52,18 +51,26 @@ int evaluate_command(int n_commands, struct single_command (*commands)[512])
     } else if (strcmp(com->argv[0], "exit") == 0) {
       return 1;
     } else {
-	  if(fork() == 0) {
-	    execv(com->argv[0], com->argv);
-      fprintf(stderr, "%s: command not found\n", com->argv[0]);
-      return -1;
+	    if(fork() == 0) {
+	        if(!strcmp(com->argv[0], "ls")) {
+	        	execv("/bin/ls", com->argv);
+	    	}
+	    	else if(!strcmp(com->argv[0], "cat")) {
+		        execv("/usr/bin/vim", com->argv);
+     		}
+	    	else if(!strcmp(com->argv[0], "vim")) {
+		        execv("/usr/bin/vim", com->argv);
+	    	}
+	    	else {
+	            execv(com->argv[0], com->argv);
+                fprintf(stderr, "%s: command not found\n", com->argv[0]);
+                return -1;
+            }
+		}
+      wait();
     }
-	wait();
-  }
-
-  return 0;
-  }
-  }
-  
+   }
+  return 0;  
 }
 void free_commands(int n_commands, struct single_command (*commands)[512])
 {
