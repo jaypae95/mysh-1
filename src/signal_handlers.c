@@ -4,7 +4,6 @@
 void catch_sigint(int signalNo)
 {
   // TODO: File this!
-  printf("		qq\n");
   signal(SIGINT, SIG_IGN);
 }
 

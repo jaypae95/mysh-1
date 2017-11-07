@@ -8,6 +8,7 @@ void mysh_parse_command(const char* command,
                         int* n_commands,
                         struct single_command (*commands)[])
 {
+  
   char buf[4096];
   strcpy(buf, command);
 
@@ -45,7 +46,7 @@ void parse_single_command(const char* command,
   int ti = 0;
 
   while (tok != NULL) {
-    (*argv)[ti] = (char*)malloc(strlen(tok));
+    (*argv)[ti] = (char*)malloc(strlen(tok)+100);
     strcpy((*argv)[ti], tok);
 
     ++ti;

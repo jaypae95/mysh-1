@@ -46,7 +46,7 @@ int validate_cd_argv(int argc, char** argv) {
   if (argc != 2) return 0;
   if (strcmp(argv[0], "cd") != 0) return 0;
   if (argv[1][0] == '~') {
-    char *temp = (char*)malloc(sizeof(char)*30);
+    char *temp = (char*)malloc(strlen(argv[1])+1);
 	strcpy(temp, argv[1]);
     strncpy(argv[1],"/home/aeis",10);
 	strcpy(argv[1]+10, temp+1);
