@@ -75,7 +75,15 @@ int evaluate_command(int n_commands, struct single_command (*commands)[512])
 							"/usr/sbin/",
 							"/sbin/" };
         int status;
-		int pid = fork();
+		int pid, pidnum;
+        int bground = 0;
+
+		if (!strcmp(com->argv[(com->argc)-1], "&")) {
+			com->argv[(com->argc)-1] = NULL;
+			(com->argc)--;
+			bground = 1;
+			}
+		pid = fork();
 
 		if(pid<0) {
 			printf("Fork failed\n");
@@ -83,6 +91,10 @@ int evaluate_command(int n_commands, struct single_command (*commands)[512])
 		}
 
 		else if(pid == 0) {
+		    if(bground == 1) {
+				pidnum = getpid();
+				printf("%d\n", pidnum);
+				}
 			if(execv(com->argv[0], com->argv) ==-1) {
 				for(int i = 0; i < 5; i++) {
 				  char tmp[100];
@@ -96,7 +108,9 @@ int evaluate_command(int n_commands, struct single_command (*commands)[512])
 			}
 		}
 
-        else wait(&status);
+        else {
+			if(bground == 0) wait(&status);
+		}
     }
    }
   else if(n_commands > 1) { 
