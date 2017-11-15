@@ -91,7 +91,7 @@ int evaluate_command(int n_commands, struct single_command (*commands)[512])
 		else if(pid == 0) {
 		    if(bground == 1) {
 				pidnum = getpid();
-				printf("%d\n", pidnum);
+				printf("%d (Process ID)\n", pidnum);
 				}
 			if(execv(com->argv[0], com->argv) ==-1) {
 				for(int i = 0; i < 5; i++) {
