@@ -9,11 +9,15 @@
 #include "signal.h"
 int main()
 { 
-  signal(SIGINT, catch_sigint);
-  signal(SIGTSTP, catch_sigtstp);
+
+//   signal(SIGINT, catch_sigint);
+//  signal(SIGTSTP, catch_sigtstp);
   char buf[8096];
 
   while (1) {
+    if(buf[0] != NULL) buf[0] = NULL;
+	signal(SIGINT, catch_sigint);
+	signal(SIGTSTP, catch_sigtstp);
     fgets(buf, 8096, stdin);
 
     struct single_command commands[512];

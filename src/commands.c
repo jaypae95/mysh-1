@@ -11,13 +11,14 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <pthread.h>
+#include <unistd.h>
 #define SOCK_PATH "tpf_unix_sock.server"
-#define DATA "Hellp from server"
+#define DATA "Help from server"
 
 #define UNIX_PATH_MAX 108
 #define SERVER_PATH "tpf_unix_sock.server"
 #define CLIENT_PATH "tpf_unix_sock.client"
-void *client(void* commands);
+void *client(struct single_command* commands);
 
 static struct built_in_command built_in_commands[] = {
   { "cd", do_cd, validate_cd_argv },
@@ -43,11 +44,8 @@ static int is_built_in_command(const char* command_name)
  */
 int evaluate_command(int n_commands, struct single_command (*commands)[512])
 {
-
   if (n_commands ==  1) {
-
-    struct single_command* com = commands;
-
+	struct single_command* com = commands;
     assert(com->argc != 0);
 
     int built_in_pos = is_built_in_command(com->argv[0]);
@@ -104,6 +102,7 @@ int evaluate_command(int n_commands, struct single_command (*commands)[512])
 				  }
 				
 				fprintf(stderr, "%s: command not found\n", com->argv[0]);
+				exit(0);
 				return-1;
 			}
 		}
@@ -114,7 +113,7 @@ int evaluate_command(int n_commands, struct single_command (*commands)[512])
     }
    }
   else if(n_commands > 1) { 
-    int sSock, cSock, len, rc;
+    int sSock, cSock, len, rc, status;
 	int bytes_rec = 0;
 	struct sockaddr_un sSockaddr;
 	struct sockaddr_un cSockaddr;
@@ -122,18 +121,16 @@ int evaluate_command(int n_commands, struct single_command (*commands)[512])
 	int backlog = 10;
 	memset(&sSockaddr, 0, sizeof(struct sockaddr_un));
 	memset(&cSockaddr, 0, sizeof(struct sockaddr_un));
-    
 	pthread_t cThread;
 	int cThread_value;
 	
-        
+	 
 	cThread_value = 
-	   pthread_create(&cThread, NULL, client, (void *)&commands);
+	   pthread_create(&cThread, NULL, client, *commands);
 	if(cThread_value < 0) {
 		printf("Thread create error\n");
 		exit(0);
 	}
-	/*Create a UNIX domain stram socket*/
 
 	sSock = socket(AF_UNIX, SOCK_STREAM, 0);
 	if(sSock == -1) {
@@ -141,9 +138,6 @@ int evaluate_command(int n_commands, struct single_command (*commands)[512])
 		exit(1);
 	}
 
-	/*Set up the UNIX sockaddr structure by using AF_UNIX for the family
-	and giving it a filepath to bind to.
-	Unlink the file so the bind will succeed, the bind to that file*/
 
 	sSockaddr.sun_family = AF_UNIX;
 	strcpy(sSockaddr.sun_path, SOCK_PATH);
@@ -157,8 +151,6 @@ int evaluate_command(int n_commands, struct single_command (*commands)[512])
 		exit(1);
 	}
 
-	/*Listen for any client sockets*/
-
 	rc = listen(sSock, backlog);
 	if (rc == -1) {
 		printf("LISTEN ERROR\n");
@@ -166,77 +158,45 @@ int evaluate_command(int n_commands, struct single_command (*commands)[512])
 		exit(1);
 	}
 
-	printf("socket listening...\n");
-
-	/*Accept an incoming connection*/
 	cSock = accept(sSock, (struct sockaddr*) &cSockaddr, &len);
 	if (cSock == -1) {
 		printf("ACCEPT ERROR\n");
 		close(sSock);
 		close(cSock);
 		exit(1);
-	}	
-	else {
-		printf("Client socket filepath: %s\n", cSockaddr.sun_path);
 	}
 
-	/*Read and print data incoming on the connected socket*/
-	printf("waiting to read...\n");
-	bytes_rec = recv(cSock, buf, sizeof(buf), 0);
-	if (bytes_rec == -1) {
-		printf("RECV ERROR\n");
-		close(sSock);
-		close(cSock);
-		exit(1);
-	}
-	else
-		printf("DATA RECEIVED = %s\n", buf);
-	
-	/*Send data back to the connected socket*/
-	memset(buf, 0, 256);
-	strcpy(buf, DATA);
-	printf("Sending data...\n");
-	rc = send(cSock, buf, strlen(buf), 0);
+	pthread_join(cThread, NULL);
 
-	if (rc == -1 ) {
-		printf("SEND ERROR\n");
-		close(sSock);
+	if (fork() == 0) {
+		close(0);
+		dup2(cSock, 0);
 		close(cSock);
-		exit(1);
+		evaluate_command(1, *commands + 1);
+		exit(0);
 	}
-	else
-		printf("Data sent!\n");
-	
-	/*Close the sockets and exit*/
+	wait(&status);
+//	pthread_join(cThread, NULL);
 	close(sSock);
 	close(cSock);
-
-	return 0;
-
+   
 	}
   return 0;  
 }
 
-void *client(void* commands) {
-
-   int cSock, rc, len;
+void *client(struct single_command* com1) {
+   int cSock, rc, len, status;
    struct sockaddr_un sSockaddr;
    struct sockaddr_un cSockaddr;
    char buf[256];
    memset(&sSockaddr, 0, sizeof(struct sockaddr_un));
    memset(&cSockaddr, 0, sizeof(struct sockaddr_un));
 
-   /*Create a UNIX domain steam socket */
-
    cSock = socket(AF_UNIX, SOCK_STREAM, 0);
    if(cSock == -1) {
    	printf("SOCKET ERROR\n");
 	exit(1);
    }
-
-   /*Set up the UNIX sockaddr structure by using for the family and
-   giving it a filepath to bind to.
-   Unlink the file so the bind will succeed, then bind to that file.*/
 
    cSockaddr.sun_family = AF_UNIX;
    strcpy(cSockaddr.sun_path, CLIENT_PATH);
@@ -250,9 +210,6 @@ void *client(void* commands) {
 	exit(1);
    }
 
-   /*Set up the UNIX sockaddr structure for the server socket and
-   connect to it.*/
-
    sSockaddr.sun_family = AF_UNIX;
    strcpy(sSockaddr.sun_path, SERVER_PATH);
    rc = connect(cSock, (struct sockaddr *) &sSockaddr, len);
@@ -261,37 +218,16 @@ void *client(void* commands) {
 	close(cSock);
 	exit(1);
    }
+	if(fork() == 0 ) {
+		close(1);
+		dup2(cSock, 1);
+		evaluate_command(1, com1);
+		exit(0);
+	}
+	wait(&status);
 
-   /*Copy the data to the buffer and send it to the server socket*/
-
-   strcpy(buf, DATA);
-   printf("Sending data...\n");
-   rc = send(cSock ,buf, strlen(buf), 0);
-   if (rc == -1) {
-   	printf("SEND ERROR\n");
-	close(cSock);
-	exit(1);
-   }
-
-   else 
-   	printf("Data sent!\n");
-
-   /*Read the data sent from the sever and print it.*/
-
-   printf("Waiting to receive data...\n");
-   memset(buf, 0 , sizeof(buf));
-   rc = recv(cSock, buf, sizeof(buf), 0);
-   if (rc == -1) {
-   	printf("RECV ERROR\n");
-	close(cSock);
-	exit(1);
-   }
-   else
-   	printf("DATA RECEIVED = %s\n", buf);
-
-   /*Close the socket and exit*/
    close(cSock);
-
+   pthread_exit(NULL);
    return 0;
 }
 void free_commands(int n_commands, struct single_command (*commands)[512])
